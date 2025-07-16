@@ -7,14 +7,646 @@
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="styles.css">
   <meta name="theme-color" content="#1976d2">
+    <style>
+      * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+      }
+      
+      body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          min-height: 100vh;
+          padding: 20px;
+      }
+      
+      .container {
+          max-width: 1200px;
+          margin: 0 auto;
+          background: white;
+          border-radius: 15px;
+          box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+          overflow: hidden;
+      }
+      
+      .header {
+          background: linear-gradient(45deg, #667eea, #764ba2);
+          padding: 30px;
+          text-align: center;
+          color: white;
+      }
+      
+      .header h1 {
+          font-size: 2.5rem;
+          margin-bottom: 10px;
+          font-weight: 300;
+      }
+      
+      .search-section {
+          padding: 30px;
+          border-bottom: 1px solid #eee;
+      }
+      
+      .search-form {
+          display: flex;
+          gap: 15px;
+          max-width: 600px;
+          margin: 0 auto;
+      }
+      
+      .search-input {
+          flex: 1;
+          padding: 15px 20px;
+          border: 2px solid #e1e5e9;
+          border-radius: 10px;
+          font-size: 16px;
+          transition: all 0.3s ease;
+      }
+      
+      .search-input:focus {
+          outline: none;
+          border-color: #667eea;
+          box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+      
+      .search-btn {
+          padding: 15px 30px;
+          background: linear-gradient(45deg, #667eea, #764ba2);
+          color: white;
+          border: none;
+          border-radius: 10px;
+          font-size: 16px;
+          cursor: pointer;
+          transition: transform 0.2s ease;
+      }
+      
+      .search-btn:hover {
+          transform: translateY(-2px);
+      }
+      
+      .search-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+          transform: none;
+      }
+      
+      .results-section {
+          padding: 30px;
+      }
+      
+      .loading {
+          text-align: center;
+          padding: 40px;
+          color: #666;
+          font-size: 18px;
+      }
+      
+      .error {
+          background: #fee;
+          border: 1px solid #fcc;
+          color: #c66;
+          padding: 15px;
+          border-radius: 10px;
+          margin-bottom: 20px;
+      }
+      
+      .results-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 20px;
+          box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+          border-radius: 10px;
+          overflow: hidden;
+      }
+      
+      .results-table th,
+      .results-table td {
+          padding: 15px 20px;
+          text-align: left;
+          border-bottom: 1px solid #eee;
+      }
+      
+      .results-table th {
+          background: linear-gradient(45deg, #667eea, #764ba2);
+          color: white;
+          font-weight: 500;
+          text-transform: uppercase;
+          font-size: 14px;
+          letter-spacing: 0.5px;
+      }
+      
+      .results-table tbody tr:hover {
+          background-color: #f8f9ff;
+      }
+      
+      .results-table td:first-child {
+          background-color: #f8f9fa;
+          font-weight: 500;
+          color: #495057;
+          vertical-align: top;
+          width: 200px;
+      }
+      
+      .results-table td:last-child {
+          vertical-align: top;
+      }
+      
+      .profile-image {
+          width: 100px;
+          height: 100px;
+          border-radius: 50%;
+          object-fit: cover;
+      }
+      
+      .results-table a {
+          color: #667eea;
+          text-decoration: none;
+      }
+      
+      .results-table a:hover {
+          text-decoration: underline;
+      }
+      
+      .no-results {
+          text-align: center;
+          padding: 40px;
+          color: #666;
+          font-size: 18px;
+      }
+      
+      @media (max-width: 768px) {
+          .search-form {
+              flex-direction: column;
+          }
+          
+          .results-table {
+              font-size: 14px;
+          }
+          
+          .results-table th,
+          .results-table td {
+              padding: 10px;
+          }
+          
+          .results-table td:first-child {
+              width: 120px;
+              font-size: 13px;
+          }
+      }
+  </style>
 </head>
 <body>
-  <h1>Привет, PWA!</h1>
-  <p>Это минимальный пример Progressive Web App.</p>
+  <!-- <h1>Привет, PWA!</h1>
+  <p>Это минимальный пример Progressive Web App.</p> -->
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./service-worker.js');
     }
+  </script>
+  <div class="container">
+      <div class="header">
+          <h1>Пошук користувачів Zello</h1>
+          <p>Знайдіть інформацію про користувачів Zello</p>
+          <small style="opacity: 0.8; font-size: 0.9em;">
+              💡 Автоматичний обхід CORS обмежень
+          </small>
+      </div>
+      
+      <div class="search-section">
+          <form class="search-form" id="searchForm">
+              <input 
+                  type="text" 
+                  class="search-input" 
+                  id="searchInput" 
+                  placeholder="Введіть ім'я користувача Zello..."
+                  required
+              >
+              <button type="submit" class="search-btn" id="searchBtn">
+                  Пошук
+              </button>
+          </form>
+      </div>
+      
+      <div class="results-section">
+          <div id="loadingMessage" class="loading" style="display: none;">
+              <div>🔍 Пошук користувача...</div>
+          </div>
+          
+          <div id="errorMessage" class="error" style="display: none;"></div>
+          
+          <div id="resultsContainer" style="display: none;">
+              <table class="results-table">
+                  <thead>
+                      <tr>
+                          <th style="width: 200px;">Поле</th>
+                          <th>Значення</th>
+                      </tr>
+                  </thead>
+                  <tbody id="resultsBody">
+                  </tbody>
+              </table>
+          </div>
+          
+          <div id="noResults" class="no-results" style="display: none;">
+              <div>👤 Користувача не знайдено</div>
+              <p>Спробуйте інше ім'я користувача</p>
+          </div>
+      </div>
+  </div>
+
+  <script>
+      class ZelloUserSearch {
+          constructor() {
+              this.searchForm = document.getElementById('searchForm');
+              this.searchInput = document.getElementById('searchInput');
+              this.searchBtn = document.getElementById('searchBtn');
+              this.loadingMessage = document.getElementById('loadingMessage');
+              this.errorMessage = document.getElementById('errorMessage');
+              this.resultsContainer = document.getElementById('resultsContainer');
+              this.resultsBody = document.getElementById('resultsBody');
+              this.noResults = document.getElementById('noResults');
+              
+              this.init();
+          }
+          
+          init() {
+              this.searchForm.addEventListener('submit', (e) => {
+                  e.preventDefault();
+                  this.searchUser();
+              });
+              
+              this.searchInput.addEventListener('keypress', (e) => {
+                  if (e.key === 'Enter') {
+                      this.searchUser();
+                  }
+              });
+          }
+          
+          async searchUser() {
+              const name = this.searchInput.value.trim();
+              if (!name) return;
+              
+              this.showLoading();
+              
+              try {
+                  const profile = await this.fetchUserProfile(name);
+                  this.displayResults(profile);
+              } catch (error) {
+                  this.showError(error.message);
+              }
+          }
+          
+          async fetchUserProfile(name) {
+              const url = `https://zello.com/users/s?name=${encodeURIComponent(name)}`;
+              
+              // Список прокси-сервисов для обхода CORS
+              const proxies = [
+                  // null, // Пробуем сначала без прокси
+                  'https://corsproxy.io/?',
+                  'https://api.allorigins.win/get?url=',
+              ];
+              
+              for (let i = 0; i < proxies.length; i++) {
+                  try {
+                      let content;
+                      
+                      if (proxies[i] === null) {
+                          // Прямой запрос без прокси
+                          const response = await fetch(url);
+                          content = await response.text();
+                      } else if (proxies[i].includes('allorigins')) {
+                          // AllOrigins возвращает JSON с полем contents
+                          const proxyUrl = proxies[i] + encodeURIComponent(url);
+                          const response = await fetch(proxyUrl);
+                          const data = await response.json();
+                          content = data.contents;
+                      } else {
+                          // Другие прокси возвращают текст напрямую
+                          const proxyUrl = proxies[i] + url;
+                          const response = await fetch(proxyUrl);
+                          content = await response.text();
+                      }
+                      
+                      // Основная логика поиска Zello.userData (не изменяется)
+                      const re = /Zello\.userData\s*=\s*(\{[\s\S]*?\})\s*;/;
+                      const match = content.match(re);
+                      
+                      if (!match) {
+                          throw new Error("Zello.userData не знайдено");
+                      }
+
+                      const userData = JSON.parse(match[1]);
+                      const profile = userData.profile;
+                      console.log(JSON.stringify(profile, null, 4));
+                      
+                      if (!profile) {
+                          throw new Error("Профіль не знайдено в userData");
+                      }
+                      
+                      this.updateProfileWithTime(profile);
+                      return profile;
+                      
+                  } catch (error) {
+                      console.warn(`Спроба ${i + 1} не вдалася:`, error.message);
+                      
+                      // Если это последняя попытка, выбрасываем ошибку
+                      if (i === proxies.length - 1) {
+                          throw new Error(`Не вдалося отримати дані користувача: ${error.message}`);
+                      }
+                      
+                      // Иначе пробуем следующий прокси
+                      continue;
+                  }
+              }
+          }
+          
+          getTimeAgo(timestamp) {
+              const now = new Date();
+              const date = new Date(timestamp * 1000);
+              const diffMs = now - date;
+              
+              const diffSeconds = Math.floor(diffMs / 1000);
+              const diffMinutes = Math.floor(diffSeconds / 60);
+              const diffHours = Math.floor(diffMinutes / 60);
+              const diffDays = Math.floor(diffHours / 24);
+              const diffMonths = Math.floor(diffDays / 30);
+              const diffYears = Math.floor(diffDays / 365);
+              
+              if (diffYears > 0) {
+                  return `${diffYears} ${this.pluralize(diffYears, 'рік', 'роки', 'років')} тому`;
+              } else if (diffMonths > 0) {
+                  return `${diffMonths} ${this.pluralize(diffMonths, 'місяць', 'місяці', 'місяців')} тому`;
+              } else if (diffDays > 0) {
+                  return `${diffDays} ${this.pluralize(diffDays, 'день', 'дні', 'днів')} тому`;
+              } else if (diffHours > 0) {
+                  return `${diffHours} ${this.pluralize(diffHours, 'година', 'години', 'годин')} тому`;
+              } else if (diffMinutes > 0) {
+                  return `${diffMinutes} ${this.pluralize(diffMinutes, 'хвилину', 'хвилини', 'хвилин')} тому`;
+              } else {
+                  return 'Щойно';
+              }
+          }
+          
+          pluralize(number, one, two, five) {
+              const n = Math.abs(number) % 100;
+              const n1 = n % 10;
+              if (n > 10 && n < 20) return five;
+              if (n1 > 1 && n1 < 5) return two;
+              if (n1 === 1) return one;
+              return five;
+          }
+
+          makeLinksClickable(text) {
+              // Регулярное выражение для поиска URL
+              const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z]{2,})+[^\s]*)/g;
+              
+              return text.replace(urlRegex, (url) => {
+                  // Добавляем https:// если протокол не указан
+                  let href = url;
+                  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                      href = 'https://' + url;
+                  }
+                  
+                  return `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color: #667eea; text-decoration: underline;">${url}</a>`;
+              });
+          }
+
+          updateProfileWithTime(profile) {
+              // Форматируем время создания профиля
+              if (profile.created) {
+                  const created = new Date(profile.created * 1000);
+                  const timeAgo = this.getTimeAgo(profile.created);
+                  profile.created_formatted = `${created.toLocaleString('ru-RU')} <small style="color: #666; font-weight: normal;">(${timeAgo})</small>`;
+              }
+              
+              // Форматируем последние изменения (ts - timestamp)
+              if (profile.ts) {
+                  const lastUpdate = new Date(profile.ts * 1000);
+                  const timeAgo = this.getTimeAgo(profile.ts);
+                  profile.last_update_formatted = `${lastUpdate.toLocaleString('ru-RU')} <small style="color: #666; font-weight: normal;">(${timeAgo})</small>`;
+              }
+              
+              // Форматируем время изменения изображения (ti - time image)
+              if (profile.ti) {
+                  const imageUpdate = new Date(profile.ti * 1000);
+                  const timeAgo = this.getTimeAgo(profile.ti);
+                  profile.image_update_formatted = `${imageUpdate.toLocaleString('ru-RU')} <small style="color: #666; font-weight: normal;">(${timeAgo})</small>`;
+              }
+          }
+          
+          displayResults(profile) {
+              this.hideAllMessages();
+              
+              // Формируем полный URL для изображения
+              let imageUrl = '';
+              let hasRealPhoto = false;
+              
+              if (profile.picture) {
+                  // Добавляем https: если URL начинается с //
+                  imageUrl = profile.picture.startsWith('//') ? 'https:' + profile.picture : profile.picture;
+                  hasRealPhoto = true;
+              }
+              
+              // Создаем массив строк для таблицы
+              const rows = [];
+              
+              // Фото профиля
+              if (hasRealPhoto) {
+                  const imageClickHandler = `onclick="window.open('${imageUrl}', '_blank')" style="cursor: pointer;"`;
+                  rows.push(`
+                      <tr>
+                          <td><strong>Фото профілю</strong></td>
+                          <td>
+                              <img src="${imageUrl}" alt="Фото профілю" class="profile-image" 
+                                    title="Натисніть для збільшення"
+                                    ${imageClickHandler}>
+                              <div style="margin-top: 5px; font-size: 12px; color: #666;">
+                                  📷 Справжнє фото (натисніть для збільшення)
+                              </div>
+                          </td>
+                      </tr>
+                  `);
+              }
+              
+              // Имя пользователя (из поля user)
+              if (profile.user) {
+                  rows.push(`
+                      <tr>
+                          <td><strong>Ім'я користувача</strong></td>
+                          <td>${profile.user}</td>
+                      </tr>
+                  `);
+              }
+              
+              // Отображаемое имя (из поля name)
+              if (profile.name) {
+                  rows.push(`
+                      <tr>
+                          <td><strong>Відображуване ім'я</strong></td>
+                          <td>${profile.name}</td>
+                      </tr>
+                  `);
+              }
+              
+              // Полное имя пользователя с учетным именем (из поля user_uc)
+              if (profile.user_uc) {
+                  rows.push(`
+                      <tr>
+                          <td><strong>Повне ім'я (UC)</strong></td>
+                          <td>${profile.user_uc}</td>
+                      </tr>
+                  `);
+              }
+              
+              // ID (из поля key)
+              if (profile.key) {
+                  rows.push(`
+                      <tr>
+                          <td><strong>ID (ключ)</strong></td>
+                          <td>${profile.key}</td>
+                      </tr>
+                  `);
+              }
+              
+              // MongoDB ID
+              if (profile._id && profile._id.$id) {
+                  rows.push(`
+                      <tr>
+                          <td><strong>MongoDB ID</strong></td>
+                          <td><code style="font-size: 11px; background: #f5f5f5; padding: 2px 4px; border-radius: 3px;">${profile._id.$id}</code></td>
+                      </tr>
+                  `);
+              }
+              
+              // Дата создания
+              if (profile.created_formatted) {
+                  rows.push(`
+                      <tr>
+                          <td><strong>Дата створення</strong></td>
+                          <td>${profile.created_formatted}</td>
+                      </tr>
+                  `);
+              }
+              
+              // Последнее обновление профиля
+              if (profile.last_update_formatted) {
+                  rows.push(`
+                      <tr>
+                          <td><strong>Останнє оновлення</strong></td>
+                          <td>${profile.last_update_formatted}</td>
+                      </tr>
+                  `);
+              }
+              
+              // Последнее обновление изображения
+              if (profile.image_update_formatted) {
+                  rows.push(`
+                      <tr>
+                          <td><strong>Оновлення фото</strong></td>
+                          <td>${profile.image_update_formatted}</td>
+                      </tr>
+                  `);
+              }
+              
+              // Местоположение
+              if (profile.location) {
+                  rows.push(`
+                      <tr>
+                          <td><strong>Місцезнаходження</strong></td>
+                          <td>${profile.location}</td>
+                      </tr>
+                  `);
+              }
+              
+              // Описание (из поля about)
+              if (profile.about) {
+                  const aboutWithLinks = this.makeLinksClickable(profile.about);
+                  rows.push(`
+                      <tr>
+                          <td><strong>Про себе</strong></td>
+                          <td>${aboutWithLinks}</td>
+                      </tr>
+                  `);
+              }
+              
+              // Веб-сайт
+              if (profile.website) {
+                  const websiteUrl = profile.website.startsWith('http') ? profile.website : 'https://' + profile.website;
+                  rows.push(`
+                      <tr>
+                          <td><strong>Веб-сайт</strong></td>
+                          <td><a href="${websiteUrl}" target="_blank" rel="noopener">${profile.website}</a></td>
+                      </tr>
+                  `);
+              }
+              
+              // Языки
+              if (profile.languages && profile.languages.length > 0) {
+                  rows.push(`
+                      <tr>
+                          <td><strong>Мови</strong></td>
+                          <td>${profile.languages.join(', ')}</td>
+                      </tr>
+                  `);
+              }
+              
+              // Настройки приватности фото
+              if (profile.hasOwnProperty('hide_picture')) {
+                  rows.push(`
+                      <tr>
+                          <td><strong>Приховувати фото</strong></td>
+                          <td>${profile.hide_picture ? '🔒 Так' : '👁️ Ні'}</td>
+                      </tr>
+                  `);
+              }
+              
+              // Ссылка на профиль (используем user вместо ID)
+              if (profile.user) {
+                  const profileUrl = `https://zello.com/users/s?name=${encodeURIComponent(profile.user)}`;
+                  rows.push(`
+                      <tr>
+                          <td><strong>Посилання на профіль</strong></td>
+                          <td><a href="${profileUrl}" target="_blank" rel="noopener">Відкрити профіль</a></td>
+                      </tr>
+                  `);
+              }
+              
+              this.resultsBody.innerHTML = rows.join('');
+              this.resultsContainer.style.display = 'block';
+          }
+          
+          showLoading() {
+              this.hideAllMessages();
+              this.searchBtn.disabled = true;
+              this.searchBtn.textContent = 'Пошук...';
+              this.loadingMessage.style.display = 'block';
+          }
+          
+          showError(message) {
+              this.hideAllMessages();
+              this.errorMessage.textContent = message;
+              this.errorMessage.style.display = 'block';
+              this.resetButton();
+          }
+          
+          hideAllMessages() {
+              this.loadingMessage.style.display = 'none';
+              this.errorMessage.style.display = 'none';
+              this.resultsContainer.style.display = 'none';
+              this.noResults.style.display = 'none';
+          }
+          
+          resetButton() {
+              this.searchBtn.disabled = false;
+              this.searchBtn.textContent = 'Пошук';
+          }
+      }
+      
+      // Инициализация приложения
+      document.addEventListener('DOMContentLoaded', () => {
+          new ZelloUserSearch();
+      });
   </script>
 </body>
 </html>
