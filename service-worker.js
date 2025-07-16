@@ -2,7 +2,10 @@ const CACHE_NAME = 'minimal-pwa-cache-v1';
 const OFFLINE_URLS = [
   '/',
   '/index.html',
-  '/styles.css'
+  '/styles.css',
+  '/manifest.json',
+  '/icon-192.png',
+  '/icon-512.png'
 ];
 
 self.addEventListener('install', event => {
