@@ -1,0 +1,301 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zello Channel Search</title>
+</head>
+<body>
+    <h1>Поиск каналов Zello</h1>
+    
+    <div>
+        <label>
+            Шаблон канала:
+            <input type="text" id="template" value="АТО Донецк #" placeholder="АТО Донецк #" oninput="saveInputs()">
+        </label>
+        <label>
+            Символ заміни:
+            <input type="text" id="placeholder" value="#" maxlength="1" size="3" oninput="saveInputs()">
+        </label>
+    </div>
+    
+    <div>
+        <label>
+            От (N):
+            <input type="number" id="fromNumber" value="1" min="0" oninput="saveInputs()">
+        </label>
+    </div>
+    
+    <div>
+        <label>
+            До (M):
+            <input type="number" id="toNumber" value="10" min="0" oninput="saveInputs()">
+        </label>
+    </div>
+    
+    <div>
+        <label>
+            Пауза между запросами (сек):
+            <input type="number" id="delay" value="1" min="0" step="0.1" oninput="saveInputs()">
+        </label>
+    </div>
+    
+    <div>
+        <label>
+            Длина паддинга (0 = без паддинга):
+            <input type="number" id="padLength" value="0" min="0" max="10" oninput="saveInputs()">
+        </label>
+        <label>
+            Символ паддинга:
+            <input type="text" id="padChar" value="0" maxlength="1" size="3" oninput="saveInputs()">
+        </label>
+    </div>
+    
+    <div>
+        <button onclick="searchChannels()">Поиск</button>
+        <button onclick="stopSearch()">Остановить</button>
+        <button onclick="clearCache()">Очистить кеш</button>
+    </div>
+    
+    <div>
+        <h2>Прогресс: <span id="progress">0/0</span> (Кеш: <span id="cacheCount">0</span>)</h2>
+        <p>Текущий: <span id="currentChannel">-</span></p>
+    </div>
+    
+    <div>
+        <h2>Результаты:</h2>
+        <div id="results"></div>
+    </div>
+
+    <script>
+        let stopRequested = false;
+        const DB_NAME = 'ZelloChannelCache';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'channels';
+        const SETTINGS_KEY = 'zello_search_settings';
+        let db;
+
+        function saveInputs() {
+            const settings = {
+                template: document.getElementById('template').value,
+                placeholder: document.getElementById('placeholder').value,
+                fromNumber: document.getElementById('fromNumber').value,
+                toNumber: document.getElementById('toNumber').value,
+                delay: document.getElementById('delay').value,
+                padLength: document.getElementById('padLength').value,
+                padChar: document.getElementById('padChar').value
+            };
+            localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+        }
+
+        function loadInputs() {
+            try {
+                const settings = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+                if (settings) {
+                    if (settings.template) document.getElementById('template').value = settings.template;
+                    if (settings.placeholder) document.getElementById('placeholder').value = settings.placeholder;
+                    if (settings.fromNumber) document.getElementById('fromNumber').value = settings.fromNumber;
+                    if (settings.toNumber) document.getElementById('toNumber').value = settings.toNumber;
+                    if (settings.delay) document.getElementById('delay').value = settings.delay;
+                    if (settings.padLength !== undefined) document.getElementById('padLength').value = settings.padLength;
+                    if (settings.padChar) document.getElementById('padChar').value = settings.padChar;
+                }
+            } catch (e) {
+                console.error('Ошибка загрузки настроек:', e);
+            }
+        }
+
+        async function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => {
+                    db = request.result;
+                    resolve(db);
+                };
+                
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: 'channelName' });
+                    }
+                };
+            });
+        }
+
+        async function saveToCache(channelName, data) {
+            if (!db) await initDB();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.put({
+                    channelName: channelName,
+                    data: data,
+                    timestamp: Date.now()
+                });
+                request.onsuccess = () => {
+                    updateCacheCount();
+                    resolve();
+                };
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function getFromCache(channelName) {
+            if (!db) await initDB();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.get(channelName);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function clearCache() {
+            if (!db) await initDB();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.clear();
+                request.onsuccess = () => {
+                    updateCacheCount();
+                    alert('Кеш очищен');
+                    resolve();
+                };
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function getCacheCount() {
+            if (!db) await initDB();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.count();
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function updateCacheCount() {
+            const count = await getCacheCount();
+            document.getElementById('cacheCount').textContent = count;
+        }
+
+        function stopSearch() {
+            stopRequested = true;
+        }
+
+        window.onload = async function() {
+            await initDB();
+            await updateCacheCount();
+            loadInputs();
+        };
+
+        async function searchChannels() {
+            const template = document.getElementById('template').value;
+            const placeholder = document.getElementById('placeholder').value || '#';
+            const fromNumber = parseInt(document.getElementById('fromNumber').value);
+            const toNumber = parseInt(document.getElementById('toNumber').value);
+            const delay = parseFloat(document.getElementById('delay').value) * 1000;
+            const padLength = parseInt(document.getElementById('padLength').value) || 0;
+            const padChar = document.getElementById('padChar').value || '0';
+            const resultsDiv = document.getElementById('results');
+            const progressSpan = document.getElementById('progress');
+            const currentChannelSpan = document.getElementById('currentChannel');
+            
+            stopRequested = false;
+            resultsDiv.innerHTML = '';
+            currentChannelSpan.textContent = '-';
+            
+            if (!template.includes(placeholder)) {
+                alert(`Шаблон должен содержать символ ${placeholder} для подстановки`);
+                return;
+            }
+            
+            if (fromNumber > toNumber) {
+                alert('Начальное значение должно быть меньше или равно конечному');
+                return;
+            }
+            
+            const total = toNumber - fromNumber + 1;
+            let completed = 0;
+            
+            for (let i = fromNumber; i <= toNumber; i++) {
+                if (stopRequested) {
+                    resultsDiv.innerHTML += '<p><strong>Поиск остановлен пользователем</strong></p>';
+                    break;
+                }
+                
+                // Применяем паддинг если нужно
+                const numberStr = padLength > 0 ? String(i).padStart(padLength, padChar) : String(i);
+                const channelName = template.replace(placeholder, numberStr);
+                progressSpan.textContent = `${completed + 1}/${total}`;
+                currentChannelSpan.textContent = channelName;
+                
+                // Проверяем кеш
+                const cached = await getFromCache(channelName);
+                
+                if (cached) {
+                    console.log(`Используем кеш для: ${channelName}`);
+                    displayResults(channelName, cached.data, true, resultsDiv);
+                } else {
+                    console.log(`Запрос к API для: ${channelName}`);
+                    try {
+                        // Ждем завершения запроса
+                        const response = await fetch(`https://corsproxy.io/?https://search.zello.com/find_channels?name=${encodeURIComponent(channelName)}`);
+                        
+                        // Проверяем статус ответа
+                        if (response.status !== 200) {
+                            console.error(`Ошибка HTTP ${response.status} для ${channelName}`);
+                            resultsDiv.innerHTML += `<p style="color: red;"><strong>Ошибка: HTTP ${response.status}. Поиск остановлен.</strong></p>`;
+                            break;
+                        }
+                        
+                        const data = await response.json();
+                        
+                        // Сохраняем в кеш и ждем завершения
+                        await saveToCache(channelName, data);
+                        
+                        // Отображаем результаты
+                        displayResults(channelName, data, false, resultsDiv);
+                        
+                        // Пауза после успешного запроса к API
+                        if (i < toNumber && delay > 0) {
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                        }
+                    } catch (error) {
+                        console.error(`Ошибка для ${channelName}:`, error);
+                        resultsDiv.innerHTML += `<p style="color: red;"><strong>Ошибка сети: ${error.message}. Поиск остановлен.</strong></p>`;
+                        break;
+                    }
+                }
+                
+                completed++;
+                progressSpan.textContent = `${completed}/${total}`;
+            }
+            
+            if (!stopRequested) {
+                resultsDiv.innerHTML += '<p><strong>Поиск завершен</strong></p>';
+            }
+            currentChannelSpan.textContent = '-';
+        }
+
+        function displayResults(searchName, data, fromCache, resultsDiv) {
+            // Показываем только если каналы найдены
+            if (data.channel_list && data.channel_list.length > 0) {
+                data.channel_list.forEach((channel, index) => {
+                    const subscribers = data.subscribers[index] || 0;
+                    const owner = data.owner[index] || 'N/A';
+                    const p = document.createElement('p');
+                    p.textContent = `${channel} | Владелец: ${owner} | Подписчиков: ${subscribers}`;
+                    resultsDiv.insertBefore(p, resultsDiv.firstChild);
+                });
+            }
+        }
+    </script>
+</body>
+</html>
